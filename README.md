@@ -1,4 +1,4 @@
-# extport
+# ExtPort
 
 Making PHP extensions installable via [PIE](https://github.com/php/pie) today.
 
