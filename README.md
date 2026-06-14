@@ -15,6 +15,7 @@ pie install extport/protobuf
 <!-- extensions-table-start -->
 | Extension | Upstream | Mirror | Packagist |
 |-----------|----------|--------|-----------|
+| protobuf | [protocolbuffers/protobuf](https://github.com/protocolbuffers/protobuf) | [extport/protobuf](https://github.com/extport/protobuf) | [extport/protobuf](https://packagist.org/packages/extport/protobuf) |
 <!-- extensions-table-end -->
 
 See [`registry.json`](registry.json) for the full list. See [`.extport.example.json`](.extport.example.json) for all available mirror configuration options.
