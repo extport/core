@@ -1,6 +1,28 @@
 {
-  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": [
-    "config:recommended"
-  ]
+    "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+    "extends": [
+        "config:recommended",
+        ":dependencyDashboard",
+        ":semanticCommits"
+    ],
+    "labels": ["dependencies"],
+    "rangeStrategy": "bump",
+    "packageRules": [
+        {
+            "description": "Auto-merge non-major updates",
+            "matchUpdateTypes": ["minor", "patch", "pin", "digest"],
+            "automerge": true,
+            "automergeType": "pr",
+            "platformAutomerge": true
+        },
+        {
+            "description": "Major updates: open PR, do not auto-merge",
+            "matchUpdateTypes": ["major"],
+            "automerge": false,
+            "addLabels": ["major-update"]
+        }
+    ],
+    "github-actions": {
+        "pinDigests": true
+    }
 }

@@ -71,7 +71,7 @@ export function buildComposerConfig(
 ) {
     const result = { ...composerContent };
     result.name = `${ORG}/${extName}`;
-    result.description = `PIE-compatible mirror of ${upstreamRepo}`;
+    result.description = `Unofficial PIE-compatible mirror of ${upstreamRepo}`;
     delete result.extra;
     result['php-ext'] = { ...result['php-ext'] };
     if (upstreamPhpExt) {
@@ -110,7 +110,7 @@ export async function main() {
         template_repo: TEMPLATE_REPO,
         owner: ORG,
         name: extName,
-        description: `PIE-compatible mirror of ${upstreamRepo}`,
+        description: `Unofficial PIE-compatible mirror of ${upstreamRepo}`,
         private: false,
         include_all_branches: false,
     });
