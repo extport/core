@@ -47,7 +47,7 @@ describe('create-mirror-repo', () => {
         it('builds composer config without binary build', () => {
             const result = buildComposerConfig(baseComposer, 'redis', 'phpredis/phpredis', 'redis', '.', false, 'src/');
             assert.equal(result.name, 'extport/redis');
-            assert.equal(result.description, 'PIE-compatible mirror of phpredis/phpredis');
+            assert.equal(result.description, 'Unofficial PIE-compatible mirror of phpredis/phpredis');
             assert.equal(result.extra, undefined);
             assert.equal(result['php-ext']['extension-name'], 'redis');
             assert.equal(result['php-ext']['build-path'], 'src');
