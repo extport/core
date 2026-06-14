@@ -1,0 +1,95 @@
+name: Offboard Extension
+
+on:
+  workflow_dispatch:
+    inputs:
+      ext-name:
+        description: 'Extension name to offboard, e.g. redis'
+        required: true
+        type: string
+      repo-action:
+        description: 'What to do with the mirror repo'
+        required: true
+        type: choice
+        options:
+          - archive
+          - delete
+          - skip
+        default: 'archive'
+      registry-action:
+        description: 'What to do with the registry.json entry'
+        required: true
+        type: choice
+        options:
+          - deprecate
+          - remove
+          - skip
+        default: 'deprecate'
+      reason:
+        description: 'Reason for offboarding (included in PR and notes)'
+        required: false
+        type: string
+
+jobs:
+  offboard:
+    name: Offboard ${{ inputs.ext-name }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6.0.3
+        with:
+          token: ${{ secrets.EXTPORT_BOT_TOKEN }}
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e  # v6.4.0
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci
+      - name: Validate extension exists
+        run: |
+          node -e "
+            import { getExtension } from './scripts/utils/registry.js';
+            const ext = getExtension(process.env.EXT_NAME);
+            if (!ext) {
+              console.error('Extension \"' + process.env.EXT_NAME + '\" not found in registry');
+              process.exit(1);
+            }
+            console.log('Found extension: ' + ext.name);
+            console.log('  Mirror repo: ' + ext['mirror-repo']);
+            console.log('  Upstream: ' + ext['upstream-repo']);
+            console.log('  Status: ' + ext.status);
+          " --input-type=module
+        env:
+          EXT_NAME: ${{ inputs.ext-name }}
+      - name: Handle mirror repo
+        id: repo
+        run: node scripts/remove-mirror-repo.js
+        env:
+          GITHUB_TOKEN: ${{ secrets.EXTPORT_BOT_TOKEN }}
+          EXT_NAME: ${{ inputs.ext-name }}
+          REPO_ACTION: ${{ inputs.repo-action }}
+      - name: Update registry.json
+        id: registry
+        run: node scripts/remove-from-registry.js
+        env:
+          EXT_NAME: ${{ inputs.ext-name }}
+          REGISTRY_ACTION: ${{ inputs.registry-action }}
+          REASON: ${{ inputs.reason }}
+      - name: Update README
+        run: node scripts/update-readme.js
+      - name: Open PR for registry update
+        if: inputs.registry-action != 'skip'
+        uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1  # v8.1.1
+        with:
+          token: ${{ secrets.EXTPORT_BOT_TOKEN }}
+          commit-message: "chore: offboard ${{ inputs.ext-name }} from registry"
+          title: "chore: offboard ${{ inputs.ext-name }}"
+          body: |
+            Offboards `${{ inputs.ext-name }}` from the extension registry.
+
+            **Repo action:** ${{ inputs.repo-action }} (${{ steps.repo.outputs.repo-result }})
+            **Registry action:** ${{ inputs.registry-action }} (${{ steps.registry.outputs.registry-result }})
+            ${{ inputs.reason && format('**Reason:** {0}', inputs.reason) || '' }}
+
+            ## Manual steps still needed
+            - [ ] Remove/abandon Packagist package if registered: https://packagist.org/packages/extport/${{ inputs.ext-name }}
+            - [ ] Remove Packagist webhook from mirror repo (if archived, not deleted)
+          branch: "offboard/${{ inputs.ext-name }}"

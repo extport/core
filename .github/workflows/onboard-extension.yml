@@ -1,0 +1,78 @@
+name: Onboard Extension
+
+on:
+  workflow_dispatch:
+    inputs:
+      upstream-repo:
+        description: 'Upstream GitHub repo (owner/repo), e.g. phpredis/phpredis'
+        required: true
+        type: string
+      ext-name:
+        description: 'Mirror repo name / short name, e.g. redis'
+        required: true
+        type: string
+      php-ext-name:
+        description: 'PHP extension name as in php -m, e.g. redis'
+        required: true
+        type: string
+      build-path:
+        description: 'Build path relative to source_dir (where config.m4 lives, e.g. "." or "php/ext/grpc")'
+        type: string
+        default: '.'
+      download-url-method:
+        description: 'PIE download method — pre-packaged-binary enables binary building'
+        type: choice
+        options:
+          - 'composer-default'
+          - 'pre-packaged-binary'
+        default: 'composer-default'
+
+jobs:
+  onboard:
+    name: Create mirror repo for ${{ inputs.ext-name }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10  # v6.0.3
+        with:
+          # Need write access to push registry.json update
+          token: ${{ secrets.EXTPORT_BOT_TOKEN }}
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e  # v6.4.0
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci
+      - name: Create mirror repo from template
+        id: create
+        run: node scripts/create-mirror-repo.js
+        env:
+          GITHUB_TOKEN: ${{ secrets.EXTPORT_BOT_TOKEN }}
+          UPSTREAM_REPO: ${{ inputs.upstream-repo }}
+          EXT_NAME: ${{ inputs.ext-name }}
+          PHP_EXT_NAME: ${{ inputs.php-ext-name }}
+          BUILD_PATH: ${{ inputs.build-path }}
+          DOWNLOAD_URL_METHOD: ${{ inputs.download-url-method }}
+      - name: Add to registry.json
+        run: node scripts/add-to-registry.js
+        env:
+          UPSTREAM_REPO: ${{ inputs.upstream-repo }}
+          EXT_NAME: ${{ inputs.ext-name }}
+          PHP_EXT_NAME: ${{ inputs.php-ext-name }}
+      - name: Update README
+        run: node scripts/update-readme.js
+      - name: Open PR for registry update
+        uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1  # v8.1.1
+        with:
+          token: ${{ secrets.EXTPORT_BOT_TOKEN }}
+          commit-message: "feat: add ${{ inputs.ext-name }} to registry"
+          title: "feat: add ${{ inputs.ext-name }} mirror"
+          body: |
+            Adds `extport/${{ inputs.ext-name }}` to the extension registry.
+
+            **Upstream:** https://github.com/${{ inputs.upstream-repo }}
+            **Mirror:** https://github.com/extport/${{ inputs.ext-name }}
+
+            ## Manual steps still needed
+            - [ ] Register on Packagist: https://packagist.org/packages/submit
+            - [ ] Set up Packagist webhook on the mirror repo
+            - [ ] Update `packagist-registered: true` in registry.json
+          branch: "onboard/${{ inputs.ext-name }}"
